@@ -1,0 +1,265 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import SideBar from "../../components/SideBar/SideBar";
+import NavBar from "../../components/NavBar/NavBar";
+
+const Home = () => {
+  const [messages, setMessages] = useState([]);
+  const [topicName, setTopicName] = useState("");
+  const [partitions, setPartitions] = useState(1);
+  const [uncreatedRequests, setUncreatedRequests] = useState([]);
+  const [createdTopics, setCreatedTopics] = useState([]);
+
+  const navigate = useNavigate();
+
+  const fetchDashboard = async () => {
+    try {
+      const { data } = await axios.get("/api/home_api/", {
+        withCredentials: true,
+      });
+      setUncreatedRequests(data.uncreated_requests || []);
+      setCreatedTopics(data.created_topics || []);
+    } catch (err) {
+      console.error("Failed to fetch dashboard:", err);
+      setMessages([{ text: "Failed to load dashboard data", type: "error" }]);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  // Submit topic request
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = { topic_name: topicName, partitions: Number(partitions) };
+    try {
+      const { data } = await axios.post("/api/home_api/", payload, {
+        withCredentials: true, // ensures Django knows which user is logged in
+        headers: { "Content-Type": "application/json" },
+      });
+
+      setMessages([
+        { text: data.message, type: data.success ? "success" : "error" },
+      ]);
+
+      if (data.success) {
+        setTopicName("");
+        setPartitions(1);
+        // await fetchDashboard();
+        // refresh dashboard to show updated uncreated requests
+        const refreshed = await axios.get("/api/home_api/", {
+          withCredentials: true,
+        });
+        setUncreatedRequests(refreshed.data.uncreated_requests || []);
+        setCreatedTopics(refreshed.data.created_topics || []);
+      }
+    } catch (err) {
+      console.error("Error creating topic:", err.response?.data || err.message);
+      setMessages([
+        {
+          text: err.response?.data?.message || "Failed to send topic request",
+          type: "error",
+        },
+      ]);
+    }
+  };
+
+  const handleCreateTopic = async (id) => {
+    try {
+      const { data } = await axios.post(`/api/create_topic_api/${id}/`);
+      setMessages([
+        { text: data.message, type: data.success ? "success" : "error" },
+      ]);
+      if (data.success) {
+        await fetchDashboard();
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages([{ text: "Topic creation failed", type: "error" }]);
+    }
+  };
+
+  const handleDeleteTopic = async (id) => {
+    try {
+      const res = await axios.delete(`/api/delete_topic/${id}/`);
+      setMessages([
+        {
+          text: res.data.message,
+          type: res.data.success ? "success" : "error",
+        },
+      ]);
+      if (res.data.success) {
+        setCreatedTopics(createdTopics.filter((topic) => topic.id !== id));
+      }
+    } catch (err) {
+      setMessages([{ text: "Delete failed", type: "error" }], err);
+    }
+  };
+
+
+  return (
+    <div className="max-w-10xl mx-auto p-5 font-sans">
+
+      {/* Header */}
+      <NavBar />
+      {/* Content Wrapper */}
+      <div className="flex flex-col md:flex-row">
+
+        {/* Sidebar */}
+        <SideBar />
+        {/* Main Content */}
+        <main className="flex-1 p-5 bg-gray-100 rounded-md">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+            User Dashboard
+          </h2>
+          {/* Messages */}
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`p-3 mb-3 rounded text-sm font-medium ${
+                msg.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {msg.text}
+            </div>
+          ))}
+
+          {/* Request New Topic */}
+          <div className="bg-white rounded-lg p-5 mb-5 shadow">
+            <h2 className="text-xl font-semibold text-gray-700 mb-3">
+              Request a New Topic
+            </h2>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-gray-600 mb-1">Topic Name</label>
+                <input
+                  type="text"
+                  value={topicName}
+                  onChange={(e) => setTopicName(e.target.value)}
+                  required
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-600 mb-1">
+                  Number of Partitions
+                </label>
+                <input
+                  type="number"
+                  value={partitions}
+                  onChange={(e) => setPartitions(e.target.value)}
+                  min="1"
+                  required
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-medium"
+              >
+                Submit Request
+              </button>
+            </form>
+          </div>
+
+          {/* Approved Requests */}
+          <div className="bg-white rounded-lg p-5 mb-5 shadow">
+            <h2 className="text-xl font-semibold text-gray-700 mb-3">
+              Approved Topic Requests
+            </h2>
+            {uncreatedRequests.length > 0 ? (
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700">
+                    <th className="p-2 text-left">Topic Name</th>
+                    <th className="p-2 text-left">Partitions</th>
+                    <th className="p-2 text-left">Status</th>
+                    <th className="p-2 text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {uncreatedRequests.map((req) => (
+                    <tr key={req.id} className="border-b border-gray-200">
+                      <td className="p-2">{req.topic_name}</td>
+                      <td className="p-2">{req.partitions}</td>
+                      <td className="p-2">{req.status}</td>
+                      <td className="p-2">
+                        <button
+                          onClick={() => handleCreateTopic(req.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Create Topic
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-gray-500 text-center">
+                No approved requests yet.
+              </p>
+            )}
+          </div>
+
+          {/* Created Topics */}
+          <div className="bg-white rounded-lg p-5 mb-5 shadow">
+            <h2 className="text-xl font-semibold text-gray-700 mb-3">
+              Created Topics
+            </h2>
+            {createdTopics.length > 0 ? (
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700">
+                    <th className="p-2 text-left">Topic Name</th>
+                    <th className="p-2 text-left">Partitions</th>
+                    <th className="p-2 text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {createdTopics.map((topic) => (
+                    <tr key={topic.id} className="border-b border-gray-200">
+                      <td className="p-2">{topic.name}</td>
+                      <td className="p-2">{topic.partitions}</td>
+                      <td className="p-2 space-x-2">
+                        <button
+                          onClick={() => navigate(`/topic/${topic.name}`)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => navigate("/alterTopic")}
+                          className="bg-orange-400 hover:bg-orange-500 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Alter
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTopic(topic.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-gray-500 text-center">
+                No created topics yet.
+              </p>
+            )}
+          </div>
+
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
