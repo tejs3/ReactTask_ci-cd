@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 function SideBar() {
   const [createdTopics, setCreatedTopics] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpandedAcl, setIsExpandedAcl] = useState(false);
   const role = localStorage.getItem("role"); // retrieve saved role
   const navigate = useNavigate();
 
@@ -67,7 +68,22 @@ function SideBar() {
             )}
           </ul>
         )}
-        
+        <br />
+        <button
+          onClick={() => setIsExpandedAcl((s) => !s)}
+          className="flex items-center justify-between w-full text-left bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 transition"
+        >
+          <span className="font-medium">My ACL's</span>
+          {isExpandedAcl ? (
+            <ChevronDownIcon className="w-4 h-4" />
+          ) : (
+            <ChevronRightIcon className="w-4 h-4" />
+          )}
+        </button>
+        {isExpandedAcl && (
+          <p className="text-sm text-gray-500 pl-2">No ACL's yet.</p>
+        )}
+
       </div>
     </aside>
   );

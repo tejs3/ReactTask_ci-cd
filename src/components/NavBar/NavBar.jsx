@@ -42,7 +42,7 @@ const NavBar = () => {
     }
   };
 
-  const displayName = role === "admin" ? `${username} (superUser)` : username;
+  const displayName = role === "admin" ? `Hi, ${username} (superUser)` : `Hi, ${username}`;
 
   return (
     <header className="flex justify-center items-center py-2 border-b border-gray-300 relative">
