@@ -5,7 +5,7 @@ import { Routes, Route, BrowserRouter } from "react-router";
 import Home from "./pages/Home/Home";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import TopicView from "./components/TopicView/TopicView";
-import CreateTopic from "./components/CreateTopic/AlterTopic";
+import AlterTopic from "./components/AlterTopic/AlterTopic";
 import Login from "./pages/Login/Login";
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/topic/:topicName" element={<TopicView />} />
-          <Route path="/alterTopic" element={<CreateTopic />} />
+          <Route path="/alterTopic/:topicName" element={<AlterTopic />} />
         </Routes>
       </BrowserRouter>
     </>

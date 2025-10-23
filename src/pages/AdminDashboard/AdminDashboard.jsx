@@ -294,7 +294,7 @@ const AdminDashboard = () => {
                           View
                         </button>
                         <button 
-                          onClick={() => navigate("/alterTopic")}
+                          onClick={() => navigate(`/alterTopic/${topic.name}`)}
                           className="bg-blue-400 hover:bg-blue-900 m-2 text-white px-3 py-1 rounded text-sm">
                           Alter
                         </button>

@@ -30,7 +30,6 @@ function SideBar() {
   return (
     <aside className="w-full md:w-60 bg-gray-50 border-r border-gray-300 p-4 rounded-md shadow-sm">
       <h2 className="text-lg font-semibold text-gray-700 mb-3">Dashboard</h2>
-
       <div>
         <button
           onClick={() => setIsExpanded((s) => !s)}
@@ -81,7 +80,11 @@ function SideBar() {
           )}
         </button>
         {isExpandedAcl && (
-          <p className="text-sm text-gray-500 pl-2">No ACL's yet.</p>
+          <ul className="mt-2 space-y-2 pl-3">
+
+            
+            <p className="text-sm text-gray-500 pl-2">No ACL's yet.</p>
+          </ul>
         )}
 
       </div>
