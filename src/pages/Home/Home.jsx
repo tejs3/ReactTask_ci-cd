@@ -100,7 +100,7 @@ const Home = () => {
 
 
   return (
-    <div className="max-w-10xl mx-auto p-5 font-sans">
+    <div className="max-w-10xl mx-auto font-sans">
 
       {/* Header */}
       <NavBar />
@@ -232,12 +232,13 @@ const Home = () => {
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => navigate("/alterTopic")}
+                        {/* No Alter operation as a User, Only SuperUser can */}
+                        {/* <button
+                          onClick={() => navigate(`/alterTopic/${topic.name}`)}
                           className="bg-orange-400 hover:bg-orange-500 text-white px-3 py-1 rounded text-sm"
                         >
                           Alter
-                        </button>
+                        </button> */}
                         <button
                           onClick={() => handleDeleteTopic(topic.id)}
                           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"

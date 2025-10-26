@@ -31,7 +31,7 @@ const TopicView = () => {
   if (!topic) return <div>Loading...</div>;
 
   return (
-    <div className="max-w-10xl mx-auto p-5 font-sans">
+    <div className="max-w-10xl mx-auto font-sans">
       <NavBar />
       <div className="flex flex-col md:flex-row">
         <SideBar />

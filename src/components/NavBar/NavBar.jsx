@@ -45,8 +45,8 @@ const NavBar = () => {
   const displayName = role === "admin" ? `Hi, ${username} (superUser)` : `Hi, ${username}`;
 
   return (
-    <header className="flex justify-center items-center py-2 border-b border-gray-300 relative">
-      <h1 className="text-3xl font-bold text-gray-800">Kafka Topic Manager</h1>
+    <header className="flex justify-center items-center py-4 border-b bg-blue-950 border-blue-900 relative">
+      <h1 className="text-3xl font-bold text-white">Kafka Topic Manager</h1>
 
       <div className="absolute right-5 flex items-center gap-3">
         <Menu as="div" className="relative inline-block text-left">
@@ -57,7 +57,7 @@ const NavBar = () => {
 
           <MenuItems
             transition
-            className="absolute right-0 z-10 mt-2 w-44 origin-top-right rounded-md bg-blue-950 shadow-lg ring-1 ring-black/5 focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 transition"
+            className="absolute right-0 z-10 mt-2 w-44 origin-top-right rounded-md bg-blue-800 shadow-lg ring-1 ring-black/5 focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 transition"
           >
             <div className="py-1">
               <MenuItem>

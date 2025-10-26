@@ -57,6 +57,8 @@ const AdminDashboard = () => {
         setMessages([{ text: data.message, type: "success" }]);
         setTopicName("");
         setPartitions(1);
+        setPendingRequests(data.pending_requests || []);
+        setCreatedTopics(data.created_topics || []); // ✅ Update from backend
         // await fetchDashboard();
       } else {
         setError(data.message || "Failed to create topic");
@@ -122,7 +124,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="max-w-10xl mx-auto p-5 font-sans">
+    <div className="max-w-10xl mx-auto font-sans">
       {/* Header */}
       <NavBar />
       {/* Content Wrapper */}
