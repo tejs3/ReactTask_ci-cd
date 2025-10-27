@@ -4,56 +4,57 @@ import axios from "axios";
 import SideBar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
 
+import { fetchUserTopics } from "../../api";
+
 const Home = () => {
   const [messages, setMessages] = useState([]);
   const [topicName, setTopicName] = useState("");
   const [partitions, setPartitions] = useState(1);
-  const [uncreatedRequests, setUncreatedRequests] = useState([]);
-  const [createdTopics, setCreatedTopics] = useState([]);
+  const [createdTopics, setCreatedTopics] = useState([]); 
+  const [uncreatedRequests, setUncreatedRequests] = useState([]); 
 
   const navigate = useNavigate();
 
-  const fetchDashboard = async () => {
+  const refreshData = async () => {
     try {
-      const { data } = await axios.get("/api/home_api/", {
-        withCredentials: true,
-      });
+      const { data } = await axios.get("/api/home_api/");
       setUncreatedRequests(data.uncreated_requests || []);
       setCreatedTopics(data.created_topics || []);
+      console.log("🔄 Dashboard data refreshed");
     } catch (err) {
       console.error("Failed to fetch dashboard:", err);
-      setMessages([{ text: "Failed to load dashboard data", type: "error" }]);
     }
   };
 
   useEffect(() => {
-    fetchDashboard();
+    refreshData();
+
+    window.addEventListener("dataUpdated", refreshData);
+    return () => window.removeEventListener("dataUpdated", refreshData);
   }, []);
 
-  // Submit topic request
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { topic_name: topicName, partitions: Number(partitions) };
+    const payload = {
+      topic_name: topicName,
+      partitions: Number(partitions),
+    };
+
     try {
       const { data } = await axios.post("/api/home_api/", payload, {
-        withCredentials: true, // ensures Django knows which user is logged in
+        withCredentials: true,
         headers: { "Content-Type": "application/json" },
       });
 
       setMessages([
         { text: data.message, type: data.success ? "success" : "error" },
       ]);
-
       if (data.success) {
         setTopicName("");
         setPartitions(1);
-        // await fetchDashboard();
-        // refresh dashboard to show updated uncreated requests
-        const refreshed = await axios.get("/api/home_api/", {
-          withCredentials: true,
-        });
-        setUncreatedRequests(refreshed.data.uncreated_requests || []);
-        setCreatedTopics(refreshed.data.created_topics || []);
+        const topics = await fetchUserTopics(); // refresh topic list
+        setCreatedTopics(topics);
+        window.dispatchEvent(new Event("dataUpdated"));
       }
     } catch (err) {
       console.error("Error creating topic:", err.response?.data || err.message);
@@ -66,54 +67,69 @@ const Home = () => {
     }
   };
 
+  //  Create topic from approved request
+
   const handleCreateTopic = async (id) => {
     try {
       const { data } = await axios.post(`/api/create_topic_api/${id}/`);
-      setMessages([
-        { text: data.message, type: data.success ? "success" : "error" },
-      ]);
+
       if (data.success) {
-        await fetchDashboard();
+        setMessages([{ text: data.message, type: "success" }]);
+
+        const topics = await fetchUserTopics();
+        setCreatedTopics(topics);
+
+        window.dispatchEvent(new Event("dataUpdated"));
       }
+      // setMessages([
+      //   { text: data.message, type: data.success ? "success" : "error" },
+      // ]);
     } catch (err) {
       console.error(err);
       setMessages([{ text: "Topic creation failed", type: "error" }]);
     }
   };
 
+  //  Delete created topic
   const handleDeleteTopic = async (id) => {
     try {
-      const res = await axios.delete(`/api/delete_topic/${id}/`);
+      const { data } = await axios.delete(`/api/delete_topic/${id}/`);
       setMessages([
-        {
-          text: res.data.message,
-          type: res.data.success ? "success" : "error",
-        },
+        { text: data.message, type: data.success ? "success" : "error" },
       ]);
-      if (res.data.success) {
-        setCreatedTopics(createdTopics.filter((topic) => topic.id !== id));
+
+      if (data.success) {
+        const topics = await fetchUserTopics();
+        setCreatedTopics(topics);
       }
+
+      window.dispatchEvent(new Event("dataUpdated"));
+
+      // if (data.success) {
+      //   setCreatedTopics((prev) => prev.filter((t) => t.id !== id));
+      // }
     } catch (err) {
-      setMessages([{ text: "Delete failed", type: "error" }], err);
+      console.error(err);
+      setMessages([{ text: "Delete failed", type: "error" }]);
     }
   };
 
-
   return (
     <div className="max-w-10xl mx-auto font-sans">
-
       {/* Header */}
       <NavBar />
+
       {/* Content Wrapper */}
       <div className="flex flex-col md:flex-row">
-
         {/* Sidebar */}
         <SideBar />
-        {/* Main Content */}
+
+        {/* Main content */}
         <main className="flex-1 p-5 bg-gray-100 rounded-md">
           <h2 className="text-2xl font-semibold text-gray-700 mb-4">
             User Dashboard
           </h2>
+
           {/* Messages */}
           {messages.map((msg, i) => (
             <div
@@ -166,7 +182,7 @@ const Home = () => {
             </form>
           </div>
 
-          {/* Approved Requests */}
+          {/* Approved topic Requests */}
           <div className="bg-white rounded-lg p-5 mb-5 shadow">
             <h2 className="text-xl font-semibold text-gray-700 mb-3">
               Approved Topic Requests
@@ -178,7 +194,7 @@ const Home = () => {
                     <th className="p-2 text-left">Topic Name</th>
                     <th className="p-2 text-left">Partitions</th>
                     <th className="p-2 text-left">Status</th>
-                    <th className="p-2 text-left">Action</th>
+                    <th className="p-2 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -192,7 +208,7 @@ const Home = () => {
                           onClick={() => handleCreateTopic(req.id)}
                           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
                         >
-                          Create Topic
+                          Create topic
                         </button>
                       </td>
                     </tr>
@@ -200,9 +216,7 @@ const Home = () => {
                 </tbody>
               </table>
             ) : (
-              <p className="text-gray-500 text-center">
-                No approved requests yet.
-              </p>
+              <p className="text-gray-500 text-center">No Approved requests.</p>
             )}
           </div>
 
@@ -232,13 +246,14 @@ const Home = () => {
                         >
                           View
                         </button>
-                        {/* No Alter operation as a User, Only SuperUser can */}
-                        {/* <button
-                          onClick={() => navigate(`/alterTopic/${topic.name}`)}
+
+                        <button
+                          onClick={() => navigate(`/alter-topic/${topic.name}`)}
                           className="bg-orange-400 hover:bg-orange-500 text-white px-3 py-1 rounded text-sm"
                         >
                           Alter
-                        </button> */}
+                        </button>
+
                         <button
                           onClick={() => handleDeleteTopic(topic.id)}
                           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
@@ -256,7 +271,6 @@ const Home = () => {
               </p>
             )}
           </div>
-
         </main>
       </div>
     </div>

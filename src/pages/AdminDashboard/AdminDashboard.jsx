@@ -3,72 +3,74 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SideBar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
-import TopicView from "../../components/TopicView/TopicView";
+// import { fetchCreatedTopics } from "../../api";
 
 const AdminDashboard = () => {
-  const [messages, setMessages] = useState([]);
-  const [topicName, setTopicName] = useState("");
-  const [partitions, setPartitions] = useState(1);
+
   const [pendingRequests, setPendingRequests] = useState([]);
   const [createdTopics, setCreatedTopics] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
+  const [topicName, setTopicName] = useState("");
+  const [partitions, setPartitions] = useState(1);
 
   const navigate = useNavigate();
 
-  // Fetch dashboard data
-  // const fetchDashboard = async () => {
-  //   try{
-  //     const{data} = await axios.get("/api/admin_dashboard_api/", {
-  //       withCredentials: true,
-  //     });
-  //     setPendingRequests(data.pending_requests || [])
-  //     setCreatedTopics(data.created_topics || [])
-  //   } catch(err){
-  //     console.error("Failed to fetch admin data:", err);
-  //   }
-  // };
+  // Define refreshData globally so it can be reused
+  const refreshData = async () => {
+    try {
+      const { data } = await axios.get("/api/admin_dashboard_api/");
+      setPendingRequests(data.pending_requests || []);
+      setCreatedTopics(data.created_topics || []);
+    } catch (err) {
+      console.error("Failed to refresh admin dashboard:", err);
+    }
+  };
+
+  // Fetch on load + periodic refresh
   useEffect(() => {
-    axios
-      .get("/api/admin_dashboard_api/")
-      .then((res) => {
-        setPendingRequests(res.data.pending_requests || []);
-        setCreatedTopics(res.data.created_topics || []);
-      })
-      .catch((err) => console.error("Failed to fetch admin data:", err));
+    refreshData(); // initial fetch
+
+    const interval = setInterval(refreshData, 1000); // auto refresh every sec
+    return () => clearInterval(interval);
   }, []);
 
-  // useEffect(()=>{
-  //   fetchDashboard();
-  // },[]);
+  // ✅ Listen for global updates
+  useEffect(() => {
+    window.addEventListener("dataUpdated", refreshData);
+    return () => window.removeEventListener("dataUpdated", refreshData);
+  }, []);
 
   // Create new topic
   const handleCreateTopic = async (e) => {
     e.preventDefault();
     setError("");
     setMessages([]);
+
     try {
       const res = await axios.post("/api/admin_dashboard_api/", {
         topic_name: topicName,
         partitions: partitions,
       });
-      const data = res.data;
 
-      if (data.success) {
-        setMessages([{ text: data.message, type: "success" }]);
+      if (res.data.success) {
+        setMessages([{ text: res.data.message, type: "success" }]);
         setTopicName("");
         setPartitions(1);
-        setPendingRequests(data.pending_requests || []);
-        setCreatedTopics(data.created_topics || []); // ✅ Update from backend
-        // await fetchDashboard();
+        refreshData();
+
+        // 🔊 Notify others (e.g. Home.jsx)
+        window.dispatchEvent(new Event("dataUpdated"));
       } else {
-        setError(data.message || "Failed to create topic");
+        setError(res.data.message || "Failed to create topic");
       }
     } catch (err) {
-      setError("Error while creating topic", err);
+      console.error("Error while creating topic:", err);
+      setError("Error while creating topic");
     }
   };
 
-  // Approve request
+  // Approve topic
   const handleApprove = async (id) => {
     try {
       const res = await axios.post(`/api/approve_request/${id}/`);
@@ -78,8 +80,11 @@ const AdminDashboard = () => {
       setMessages([{ text: message, type: "success" }]);
 
       if (res.data.success) {
-        setPendingRequests(pendingRequests.filter((req) => req.id !== id));
-        // await fetchDashboard();
+        setPendingRequests((prev) => prev.filter((req) => req.id !== id));
+        refreshData();
+
+        // 🔊 Notify user’s Home.jsx
+        window.dispatchEvent(new Event("dataUpdated"));
       }
     } catch (err) {
       console.error("Approval error:", err);
@@ -87,16 +92,20 @@ const AdminDashboard = () => {
     }
   };
 
-  // Decline request
+  // Decline topic
   const handleDecline = async (id) => {
     try {
       const res = await axios.post(`/api/decline_request/${id}/`);
       const message = res.data.message || "Topic request declined.";
 
       setMessages([{ text: message, type: "error" }]);
+
       if (res.data.success) {
-        setPendingRequests(pendingRequests.filter((req) => req.id !== id));
-        // await fetchDashboard();
+        setPendingRequests((prev) => prev.filter((req) => req.id !== id));
+        refreshData();
+
+        // 🔊 Notify others
+        window.dispatchEvent(new Event("dataUpdated"));
       }
     } catch (err) {
       console.error("Decline error:", err);
@@ -114,22 +123,23 @@ const AdminDashboard = () => {
           type: res.data.success ? "success" : "error",
         },
       ]);
+
       if (res.data.success) {
-        setCreatedTopics(createdTopics.filter((topic) => topic.id !== id));
-        // await fetchDashboard();
+        refreshData();
+        window.dispatchEvent(new Event("dataUpdated"));
       }
     } catch (err) {
-      setMessages([{ text: "Delete failed", type: "error" }], err);
+      console.error("Delete failed:", err);
+      setMessages([{ text: "Delete failed", type: "error" }]);
     }
   };
 
   return (
     <div className="max-w-10xl mx-auto font-sans">
-      {/* Header */}
       <NavBar />
+
       {/* Content Wrapper */}
       <div className="flex flex-col md:flex-row">
-        {/* Sidebar */}
         <SideBar />
 
         {/* Main Content */}
@@ -138,11 +148,10 @@ const AdminDashboard = () => {
             Admin Dashboard
           </h2>
 
-          {/* Messages */}
           {messages.map((msg, i) => (
             <div
-              key={i}
-              className={`mb-3 p-3  rounded text-sm font-medium ${
+              key={`${msg.type}-${i}`}
+              className={`mb-3 p-3 rounded text-sm font-medium ${
                 msg.type === "success"
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"
@@ -193,7 +202,7 @@ const AdminDashboard = () => {
             </form>
           </div>
 
-          {/* Pending Requests */}
+          {/* Pending Requests Table */}
           <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
               Pending Topic Requests
@@ -219,7 +228,7 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {pendingRequests.map((req) => (
-                      <tr key={req.id}>
+                      <tr key={req.id || req.request_id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {req.topic_name}
                         </td>
@@ -253,7 +262,7 @@ const AdminDashboard = () => {
             )}
           </div>
 
-          {/* Created Topics */}
+          {/* Created Topics Table */}
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-xl font-semibold text-gray-700 mb-3">
               Created Topics
@@ -277,8 +286,8 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {createdTopics.map((topic) => (
-                    <tr key={topic.id}>
+                  {createdTopics.map((topic, index) => (
+                    <tr key={`{topic.id || topic.name}-${index}`}>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {topic.name}
                       </td>
@@ -288,10 +297,10 @@ const AdminDashboard = () => {
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {topic.created_by__username}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium">
+                      <td className="px-6 py-4 text-sm font-medium space-x-2">
                         <button
                           onClick={() => navigate(`/topic/${topic.name}`)}
-                          className="bg-green-600 hover:bg-green-700 m-2 text-white px-3 py-1 rounded text-sm"
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
                         >
                           View
                         </button>
@@ -302,7 +311,7 @@ const AdminDashboard = () => {
                         </button>
                         <button
                           onClick={() => handleDeleteTopic(topic.id)}
-                          className="bg-red-600 hover:bg-red-700 m-2 text-white px-3 py-1 rounded text-sm"
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
                         >
                           Delete
                         </button>
