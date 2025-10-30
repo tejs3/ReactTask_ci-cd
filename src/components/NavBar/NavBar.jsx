@@ -62,6 +62,14 @@ const NavBar = () => {
             <div className="py-1">
               <MenuItem>
                 <a
+                  onClick={()=>{navigate('history/')}}
+                  className="block px-4 py-2 text-sm text-white  hover:bg-white hover:text-gray-600"
+                >
+                  History
+                </a>
+              </MenuItem>
+              <MenuItem>
+                <a
                   // onClick={navigate()}
                   className="block px-4 py-2 text-sm text-white  hover:bg-white hover:text-gray-600"
                 >

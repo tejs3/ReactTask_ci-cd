@@ -7,6 +7,7 @@ import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import TopicView from "./components/TopicView/TopicView";
 import AlterTopic from "./components/AlterTopic/AlterTopic";
 import Login from "./pages/Login/Login";
+import History from "./components/History/History";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/topic/:topicName" element={<TopicView />} />
           <Route path="/alterTopic/:topicName" element={<AlterTopic />} />
+          <Route path="/history" element={<History/> } />
         </Routes>
       </BrowserRouter>
     </>
