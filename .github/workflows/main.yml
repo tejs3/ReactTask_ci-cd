@@ -39,6 +39,6 @@ jobs:
       run: npm test --if-present
 
     - name: reload
-      run: systemctl reload nginx
+      run: systemctl restart nginx
 
     
