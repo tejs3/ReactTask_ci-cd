@@ -1,6 +1,6 @@
 name: React CI/CD
 
-# Trigger workflow on push or pull request to main
+# Trigger workflow on push, pull request, or manual trigger
 on:
   push:
     branches:
@@ -8,11 +8,10 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:  # Manual trigger
 
 jobs:
-  build:
-
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     strategy:
@@ -20,25 +19,30 @@ jobs:
         node-version: ['18.x']
 
     steps:
+    # 1️⃣ Checkout the repository
     - name: Checkout repository
       uses: actions/checkout@v5
 
+    # 2️⃣ Setup Node.js
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
+    # 3️⃣ Install dependencies
     - name: Install dependencies
       run: npm install
 
+    # 4️⃣ Build React app
     - name: Build React app
       run: npm run build
 
+    # 5️⃣ Run tests
     - name: Run tests
       run: npm test --if-present
 
-    # Optional deployment to server
+    # 6️⃣ Deploy to Oracle Linux server (only on main branch)
     - name: Deploy to Oracle Linux server
       if: github.ref == 'refs/heads/main'
       env:
@@ -46,6 +50,15 @@ jobs:
         SERVER_USER: root
         SERVER_HOST: 10.1.14.101
       run: |
+        echo "Setting up SSH key..."
         echo "$SSH_PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
+
+        echo "Ensuring target directory exists..."
+        ssh -i private_key.pem -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_HOST "mkdir -p /var/www/myapp/"
+
+        echo "Deploying build directory..."
         rsync -avz -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" ./build/ $SERVER_USER@$SERVER_HOST:/var/www/myapp/
+
+        echo "Cleaning up..."
+        rm -f private_key.pem
